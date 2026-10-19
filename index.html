@@ -1,0 +1,1999 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="安全巡視日報">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2b5797">
+<title>安全巡視日報入力アプリ</title>
+<style>
+  /* 基本スタイル */
+  * { box-sizing: border-box; font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif; }
+  body { margin: 0; padding: 0; background-color: #f0f2f5; color: #333; }
+  
+  /* スマホ入力画面UI */
+  #app-container { max-width: 720px; margin: 0 auto; padding: 16px; background: #fff; min-height: 100vh; box-shadow: 0 0 10px rgba(0,0,0,0.05); }
+  .header-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2b5797; padding-bottom: 10px; margin-bottom: 15px; }
+  .header-bar h1 { font-size: 1.25rem; margin: 0; color: #2b5797; font-weight: bold; }
+  
+  .card { background: #fafbfc; border: 1px solid #dbe2ea; border-radius: 8px; padding: 14px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+  .card-title { font-weight: bold; margin-bottom: 10px; font-size: 0.95rem; color: #234574; border-left: 4px solid #2b5797; padding-left: 8px; display: flex; justify-content: space-between; align-items: center; }
+  
+  label { display: block; font-size: 0.85rem; margin-top: 8px; margin-bottom: 3px; font-weight: 600; color: #444; }
+  input[type="text"], input[type="date"], select, textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid #ccd5e0; border-radius: 5px; font-size: 0.95rem; background: #fff; color: #222;
+  }
+  input[type="text"]:focus, select:focus, textarea:focus {
+    outline: none; border-color: #2b5797; box-shadow: 0 0 0 2px rgba(43,87,151,0.2);
+  }
+  textarea { resize: vertical; min-height: 60px; line-height: 1.4; }
+  
+  /* 天候バッジ・候補 */
+  .weather-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .weather-chip {
+    background: #e9ecef; border: 1px solid #ced4da; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; cursor: pointer; user-select: none; transition: 0.15s;
+  }
+  .weather-chip:hover { background: #2b5797; color: #fff; border-color: #2b5797; }
+
+  /* 音声入力 */
+  .input-with-voice { position: relative; display: flex; align-items: center; }
+  .voice-btn { position: absolute; right: 6px; top: 6px; background: #28a745; color: #fff; border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer; transition: 0.2s; }
+  .voice-btn:hover { background: #218838; }
+  .voice-btn.recording { background: #dc3545; animation: pulse 1s infinite; }
+  @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+  /* 巡視時間グリッド選択 */
+  .time-selector { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 5px; }
+  .time-cell { border: 1px solid #ccd5e0; padding: 7px 0; text-align: center; font-size: 0.75rem; cursor: pointer; background: #fff; border-radius: 4px; font-weight: 500; transition: 0.15s; }
+  .time-cell:hover { background: #eaf1fa; }
+  .time-cell.active { background: #2b5797; color: #fff; font-weight: bold; border-color: #2b5797; }
+
+  /* 写真アップロードエリア */
+  .photo-upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+  .photo-box {
+    border: 2px dashed #ccd5e0; border-radius: 6px; padding: 10px; text-align: center; background: #fdfdfd; position: relative;
+  }
+  .photo-preview {
+    width: 100%; height: 130px; object-fit: contain; background: #eee; border-radius: 4px; margin-bottom: 6px; display: none;
+  }
+  .photo-actions { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+  .btn-photo-camera {
+    background: #28a745; color: #fff; padding: 6px 9px; font-size: 0.78rem; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; font-weight: bold; border: none;
+  }
+  .btn-photo-camera:hover { background: #218838; }
+  .btn-photo-file {
+    background: #2b5797; color: #fff; padding: 6px 9px; font-size: 0.78rem; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; font-weight: bold; border: none;
+  }
+  .btn-photo-file:hover { background: #1f3f6d; }
+  .btn-photo-clear {
+    background: #dc3545; color: #fff; padding: 6px 8px; font-size: 0.78rem; border-radius: 4px; border: none; cursor: pointer; display: none; font-weight: bold;
+  }
+
+  /* 点検項目グループ */
+  .cat-group { background: #fff; border: 1px solid #e1e7ed; border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
+  .cat-header {
+    background: #eef3f8; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; user-select: none;
+  }
+  .cat-title { font-size: 0.88rem; font-weight: bold; color: #234574; display: flex; align-items: center; gap: 6px; }
+  .cat-actions { display: flex; gap: 4px; align-items: center; }
+  .cat-btn {
+    padding: 3px 7px; font-size: 0.72rem; border-radius: 4px; border: 1px solid #adc2dc; background: #fff; color: #2b5797; cursor: pointer; font-weight: bold;
+  }
+  .cat-btn:hover { background: #2b5797; color: #fff; }
+  .cat-body { padding: 8px 10px; display: block; }
+  .cat-item-row { border-bottom: 1px solid #f0f2f5; padding: 6px 0; }
+  .cat-item-row:last-child { border-bottom: none; }
+  .cat-item-name { font-size: 0.83rem; font-weight: 600; color: #333; margin-bottom: 4px; }
+  .cat-item-inputs { display: flex; gap: 6px; align-items: center; }
+  
+  /* ボタン群 */
+  .btn-bar { display: flex; gap: 8px; margin-top: 15px; }
+  .btn { flex: 1; padding: 12px; border: none; border-radius: 6px; font-size: 0.95rem; font-weight: bold; cursor: pointer; text-align: center; transition: 0.2s; }
+  .btn-primary { background: #2b5797; color: #fff; }
+  .btn-primary:hover { background: #1f3f6d; }
+  .btn-secondary { background: #6c757d; color: #fff; }
+  .btn-secondary:hover { background: #5a6268; }
+  .btn-copy { background: #17a2b8; color: #fff; }
+  .btn-copy:hover { background: #138496; }
+  .btn-manage { background: #495057; color: #fff; padding: 4px 8px; font-size: 0.75rem; border-radius: 4px; border: none; cursor: pointer; }
+  .btn-manage:hover { background: #343a40; }
+
+  /* モーダル */
+  .modal-overlay {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; padding: 15px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-content {
+    background: #fff; width: 100%; max-width: 600px; max-height: 90vh; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  }
+  .modal-header { padding: 12px 16px; background: #2b5797; color: #fff; font-weight: bold; font-size: 1rem; display: flex; justify-content: space-between; align-items: center; }
+  .modal-body { padding: 16px; overflow-y: auto; flex: 1; }
+  .modal-footer { padding: 10px 16px; background: #f8f9fa; border-top: 1px solid #ddd; display: flex; justify-content: flex-end; gap: 8px; }
+  
+  .category-checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-top: 8px; }
+  .category-check-item { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; padding: 5px; background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 4px; cursor: pointer; }
+
+  /* 印影デザイン（電子印鑑） */
+  .hanko-cell {
+    text-align: center !important;
+    vertical-align: middle !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .hanko-stamp {
+    display: inline-block !important;
+    vertical-align: middle !important;
+    filter: drop-shadow(0 0 0.5px rgba(179,36,36,0.3));
+    transform: rotate(-3deg);
+    opacity: 0.88;
+  }
+  .hanko-stamp text {
+    font-family: "游明朝", "Yu Mincho", "YuMincho", "MS Mincho", "ＭＳ 明朝", "Hiragino Mincho ProN", serif !important;
+    font-weight: bold !important;
+  }
+
+  /* 印刷用プレビューエリア（画面上は非表示） */
+  #pdf-render-area { display: none; }
+
+  /* =========================================================
+     印刷・PDF出力用スタイル（A4縦 2ページ〜3ページ）
+     ========================================================= */
+  @page {
+    size: A4 portrait;
+    margin: 0; /* ブラウザ標準のヘッダー・フッター（日時・URL・ファイル名・ページ番号）を完全に非表示にする */
+  }
+
+  @media print {
+    body {
+      background: #fff !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      font-family: "MS Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+      color: #000;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    #app-container, .modal-overlay { display: none !important; }
+    #pdf-render-area { display: block !important; margin: 0; padding: 0; }
+    
+    /* 1ページあたりの領域（A4サイズ: 210mm x 297mm） */
+    .print-page {
+      width: 210mm;
+      height: 297mm;
+      max-height: 297mm;
+      padding: 10mm 12mm;
+      box-sizing: border-box;
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+      page-break-inside: avoid;
+      background: #fff;
+    }
+    .print-page:last-child {
+      page-break-after: avoid;
+    }
+
+    /* 共通テーブル罫線 */
+    table.print-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1.2pt solid #000;
+      table-layout: fixed;
+    }
+    table.print-table th, table.print-table td {
+      border: 0.6pt solid #000;
+      padding: 2px 3px;
+      vertical-align: middle;
+      word-break: break-all;
+    }
+    .text-center { text-align: center; }
+
+    /* ---------------- 1ページ目スタイル（余裕を持たせたレイアウト） ---------------- */
+    .p1-header-box {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      min-height: 85px;
+      margin-bottom: 8px;
+    }
+    .p1-header-left {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 85px;
+      padding-right: 15px;
+    }
+    .p1-title-text {
+      font-size: 21pt;
+      font-weight: bold;
+      letter-spacing: 9px;
+      text-align: center;
+      padding-top: 2px;
+      margin: 0 0 8px 0;
+    }
+    .p1-meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      font-size: 9.8pt;
+      padding-bottom: 2px;
+    }
+    .p1-hanko-wrap {
+      width: 130px;
+      height: 85px;
+    }
+    .p1-hanko-table {
+      width: 130px;
+      border-collapse: collapse;
+      border: 1.2pt solid #000;
+      table-layout: fixed;
+    }
+    .p1-hanko-table th {
+      border: 0.6pt solid #000;
+      font-size: 7.5pt;
+      font-weight: normal;
+      text-align: center;
+      height: 20px;
+      padding: 1px 0;
+    }
+    .p1-hanko-table td {
+      border: 0.6pt solid #000;
+      width: 65px;
+      height: 65px; /* 正方形枠 */
+      text-align: center !important;
+      vertical-align: middle !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      box-sizing: border-box;
+    }
+
+    /* タイムチャート */
+    .time-chart-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1.2pt solid #000;
+      table-layout: fixed;
+    }
+    .time-chart-table th, .time-chart-table td {
+      border: 0.5pt solid #000;
+      text-align: center;
+      font-size: 7.5pt;
+      padding: 0;
+      height: 16px;
+    }
+    .time-active {
+      background-color: #333 !important;
+      color: #fff !important;
+      font-weight: bold;
+    }
+
+    /* 1ページ目 本文大枠テーブル（親テーブルで完璧に整列） */
+    .p1-main-table {
+      width: 100%;
+      height: 185mm;
+      margin-top: 8px;
+      border-collapse: collapse;
+      border: 1.2pt solid #000;
+      table-layout: fixed;
+    }
+    .p1-main-table th {
+      font-size: 9pt;
+      font-weight: normal;
+      text-align: center;
+      border: 0.6pt solid #000;
+      letter-spacing: 1px;
+    }
+    .p1-main-table td {
+      border: 0.6pt solid #000;
+      padding: 5px 8px;
+      font-size: 9pt;
+      line-height: 1.45;
+      vertical-align: top;
+      white-space: pre-wrap;
+    }
+
+    /* ---------------- 2ページ目 点検表スタイル ---------------- */
+    .p2-header-title {
+      text-align: center;
+      margin: 0 0 4px 0;
+      font-size: 14pt;
+      letter-spacing: 6px;
+      font-weight: bold;
+    }
+    .p2-columns-container {
+      display: flex;
+      gap: 6px;
+      width: 100%;
+    }
+    .p2-col-table {
+      flex: 1;
+      border-collapse: collapse;
+      border: 1.2pt solid #000;
+      table-layout: fixed;
+      font-size: 6.8pt;
+    }
+    .p2-col-table th {
+      border: 0.5pt solid #000;
+      background: #f4f4f4 !important;
+      text-align: center;
+      padding: 1px;
+      font-weight: normal;
+    }
+    .p2-col-table td {
+      border: 0.5pt solid #000;
+      padding: 1px 2px;
+      min-height: 14.5px;
+      line-height: 1.15;
+      vertical-align: middle;
+    }
+    .p2-item-name {
+      white-space: normal !important;
+      word-break: break-all !important;
+      line-height: 1.08 !important;
+      font-size: 6.2pt !important;
+      text-align: left !important;
+      padding: 1px 3px !important;
+    }
+    .p2-cat-vertical {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      letter-spacing: 1.5px;
+      text-align: center;
+      vertical-align: middle;
+      font-size: 6.2pt;
+      padding: 2px 1px !important;
+      white-space: nowrap;
+    }
+    
+    /* 重点巡視項目テーブル（2件固定） */
+    .p2-priority-header {
+      margin-top: 8px;
+      margin-bottom: 3px;
+      font-size: 8.5pt;
+      font-weight: bold;
+    }
+    .p2-priority-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1.2pt solid #000;
+      table-layout: fixed;
+      font-size: 7.8pt;
+    }
+    .p2-priority-table th {
+      border: 0.5pt solid #000;
+      background: #f4f4f4 !important;
+      font-weight: normal;
+      text-align: center;
+      padding: 3px;
+    }
+    .p2-priority-table td {
+      border: 0.5pt solid #000;
+      padding: 3px 6px;
+      height: 24px;
+    }
+    .p2-note {
+      font-size: 7pt;
+      text-align: right;
+      margin-top: 3px;
+    }
+
+    /* ---------------- 3ページ目 写真添付ページスタイル ---------------- */
+    .p3-title {
+      text-align: center;
+      margin: 0 0 8px 0;
+      font-size: 16pt;
+      font-weight: bold;
+      letter-spacing: 5px;
+    }
+    .p3-meta-bar {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1.2pt solid #000;
+      padding-bottom: 4px;
+      margin-bottom: 8px;
+      font-size: 9.5pt;
+    }
+    .p3-main-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1.2pt solid #000;
+      table-layout: fixed;
+    }
+    .p3-th-header {
+      background: #f0f0f0 !important;
+      border: 0.6pt solid #000;
+      font-size: 9.5pt;
+      font-weight: bold;
+      text-align: left;
+      padding: 4px 8px;
+    }
+    .p3-td-content {
+      border: 0.6pt solid #000;
+      font-size: 9pt;
+      padding: 6px 8px;
+      height: 18mm;
+      vertical-align: top;
+      white-space: pre-wrap;
+      line-height: 1.4;
+    }
+    .p3-th-photo {
+      background: #f0f0f0 !important;
+      border: 0.6pt solid #000;
+      font-size: 9.5pt;
+      font-weight: bold;
+      text-align: center;
+      padding: 4px;
+      width: 50%;
+    }
+    .p3-td-photo {
+      border: 0.6pt solid #000;
+      padding: 4px;
+      height: 120mm;
+      text-align: center;
+      vertical-align: middle;
+      background: #fff;
+    }
+    .p3-photo-img {
+      max-width: 100%;
+      max-height: 115mm;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="app-container">
+  <div class="header-bar">
+    <h1>安全巡視日報入力</h1>
+    <div style="display:flex; gap:5px; align-items:center;">
+      <button class="btn btn-secondary" onclick="openQrModal()" style="padding: 4px 7px; font-size:0.75rem; background:#17a2b8; border-color:#17a2b8;">📱 スマホ</button>
+      <label class="btn btn-secondary" style="padding: 4px 7px; font-size:0.75rem; margin:0; cursor:pointer;" title="他の端末やPCのバックアップデータを読み込み">読込<input type="file" accept=".json" onchange="importDataJSON(this)" style="display:none;"></label>
+      <button class="btn btn-secondary" onclick="exportDataJSON()" style="padding: 4px 7px; font-size:0.75rem;" title="入力データのバックアップ保存">保存</button>
+      <button class="btn btn-primary" onclick="prepareAndPrintPDF()" style="padding: 4px 9px; font-size:0.8rem;">PDF印刷</button>
+    </div>
+  </div>
+
+  <!-- 工事選択 & 日付 & 天候 & 安全巡視員 -->
+  <div class="card">
+    <div class="card-title">工事・日付・天候・担当者設定</div>
+    <label>対象工事名</label>
+    <div style="display:flex; gap:5px;">
+      <select id="project-select" onchange="switchProject()" style="flex:1;"></select>
+      <button onclick="createNewProject()" style="padding: 0 10px; border-radius:4px; border:1px solid #ccc; background:#f8f9fa; cursor:pointer;">＋新規</button>
+    </div>
+    
+    <div style="display:flex; gap:10px; margin-top:8px;">
+      <div style="flex:1;">
+        <label>巡視年月日</label>
+        <input type="date" id="report-date" onchange="loadDateRecord()">
+      </div>
+      <div style="flex:1;">
+        <label>天候（手入力・選択可能）</label>
+        <input type="text" id="weather" list="weather-options" placeholder="天候を入力または選択" onchange="handleWeatherChange(this.value)">
+        <datalist id="weather-options"></datalist>
+      </div>
+    </div>
+    <!-- 天候クイック選択候補バッジ -->
+    <div class="weather-chips" id="weather-chips-container"></div>
+
+    <!-- 安全巡視員設定 -->
+    <div style="margin-top:8px;">
+      <label>安全巡視員 氏名（PDFの印鑑欄に押印されます）</label>
+      <input type="text" id="inspector-name" list="inspector-options" placeholder="例：山田 太郎" oninput="handleInspectorChange(this.value)">
+      <datalist id="inspector-options"></datalist>
+    </div>
+
+    <button class="btn btn-copy" style="margin-top:10px; width:100%;" onclick="copyYesterdayData()">前日（前回）の内容を引き継ぐ</button>
+  </div>
+
+  <!-- 巡視時間 -->
+  <div class="card">
+    <div class="card-title">巡視時間（タップで点灯）</div>
+    <div class="time-selector" id="time-selector-ui"></div>
+  </div>
+
+  <!-- 1ページ目記入項目 -->
+  <div class="card">
+    <div class="card-title">巡視記録（音声入力対応）</div>
+    <label>主な作業項目</label>
+    <div class="input-with-voice">
+      <textarea id="work-items" rows="3"></textarea>
+      <button class="voice-btn" onclick="startVoice('work-items', this)">🎤</button>
+    </div>
+
+    <label>作業の急所と安全上の諸注意</label>
+    <div class="input-with-voice">
+      <textarea id="safety-notes" rows="3"></textarea>
+      <button class="voice-btn" onclick="startVoice('safety-notes', this)">🎤</button>
+    </div>
+
+    <div style="display:flex; gap:10px;">
+      <div style="flex:1;">
+        <label>安全点検結果 (AM)</label>
+        <div class="input-with-voice">
+          <textarea id="safety-results-am" rows="2"></textarea>
+          <button class="voice-btn" onclick="startVoice('safety-results-am', this)">🎤</button>
+        </div>
+      </div>
+      <div style="flex:1;">
+        <label>安全点検結果 (PM)</label>
+        <div class="input-with-voice">
+          <textarea id="safety-results-pm" rows="2"></textarea>
+          <button class="voice-btn" onclick="startVoice('safety-results-pm', this)">🎤</button>
+        </div>
+      </div>
+    </div>
+
+    <label>指示・是正事項</label>
+    <div class="input-with-voice">
+      <textarea id="corrective-actions" rows="2"></textarea>
+      <button class="voice-btn" onclick="startVoice('corrective-actions', this)">🎤</button>
+    </div>
+
+    <!-- 是正写真添付（改善前・改善後） -->
+    <div style="margin-top:12px; padding:10px; background:#f4f7fb; border:1px solid #d0dbe7; border-radius:6px;">
+      <div style="font-weight:bold; font-size:0.85rem; color:#234574; display:flex; justify-content:space-between; align-items:center;">
+        <span>📸 是正・改善写真の添付（改善前 / 改善後）</span>
+        <span style="font-size:0.75rem; color:#666; font-weight:normal;">※写真添付時は3ページ目を追加出力</span>
+      </div>
+      
+      <div class="photo-upload-grid">
+        <!-- 改善前 -->
+        <div class="photo-box">
+          <div style="font-weight:bold; font-size:0.8rem; margin-bottom:4px; color:#d9534f;">【改善前】写真</div>
+          <img id="preview-photo-before" class="photo-preview" alt="改善前プレビュー">
+          <!-- カメラ直接撮影用 (capture=environment) -->
+          <input type="file" id="camera-photo-before" accept="image/*" capture="environment" style="display:none;" onchange="handlePhotoUpload(this, 'before')">
+          <!-- アルバム/ファイル選択用 -->
+          <input type="file" id="file-photo-before" accept="image/*" style="display:none;" onchange="handlePhotoUpload(this, 'before')">
+          <div class="photo-actions">
+            <label for="camera-photo-before" class="btn-photo-camera" title="スマホのカメラを起動して直接撮影">📷 撮影</label>
+            <label for="file-photo-before" class="btn-photo-file" title="アルバムや保存済み写真から選択">📁 選択</label>
+            <button id="btn-clear-before" class="btn-photo-clear" onclick="clearPhoto('before')">削除</button>
+          </div>
+        </div>
+
+        <!-- 改善後 -->
+        <div class="photo-box">
+          <div style="font-weight:bold; font-size:0.8rem; margin-bottom:4px; color:#28a745;">【改善後】写真</div>
+          <img id="preview-photo-after" class="photo-preview" alt="改善後プレビュー">
+          <!-- カメラ直接撮影用 (capture=environment) -->
+          <input type="file" id="camera-photo-after" accept="image/*" capture="environment" style="display:none;" onchange="handlePhotoUpload(this, 'after')">
+          <!-- アルバム/ファイル選択用 -->
+          <input type="file" id="file-photo-after" accept="image/*" style="display:none;" onchange="handlePhotoUpload(this, 'after')">
+          <div class="photo-actions">
+            <label for="camera-photo-after" class="btn-photo-camera" title="スマホのカメラを起動して直接撮影">📷 撮影</label>
+            <label for="file-photo-after" class="btn-photo-file" title="アルバムや保存済み写真から選択">📁 選択</label>
+            <button id="btn-clear-after" class="btn-photo-clear" onclick="clearPhoto('after')">削除</button>
+          </div>
+        </div>
+      </div>
+
+      <label style="margin-top:8px;">改善処置および確認内容（写真説明）</label>
+      <input type="text" id="photo-detail-note" placeholder="例：バリケードのボルト締め直しを実施。是正完了を確認。" oninput="autoSaveCurrent()">
+    </div>
+
+    <label style="margin-top:10px;">備考</label>
+    <div class="input-with-voice">
+      <textarea id="remarks" rows="2"></textarea>
+      <button class="voice-btn" onclick="startVoice('remarks', this)">🎤</button>
+    </div>
+  </div>
+
+  <!-- 2ページ目 点検表設定・入力（工事別項目選択＆新規作成対応） -->
+  <div class="card">
+    <div class="card-title">
+      <span>巡回点検表（良：〇 / 否：× / なし：-）</span>
+      <div style="display:flex; gap:4px; align-items:center;">
+        <button class="btn-manage" onclick="openCategoryManageModal()">⚙️ 工事別項目設定</button>
+        <button class="cat-btn" onclick="bulkSetAllChecks('○')" style="background:#28a745; color:#fff; border-color:#28a745;">全○</button>
+        <button class="cat-btn" onclick="bulkSetAllChecks('-')" style="background:#6c757d; color:#fff; border-color:#6c757d;">全-</button>
+      </div>
+    </div>
+    <div style="font-size:0.75rem; color:#666; margin-bottom:8px;">
+      ※大項目（カテゴリ）ごとに一括評価できます。「⚙️ 工事別項目設定」から工事に必要な工種を選択・新規作成できます。
+    </div>
+    <div id="check-categories-container"></div>
+  </div>
+
+  <!-- 重点巡視項目（2件固定） -->
+  <div class="card">
+    <div class="card-title">本日の作業に伴う重点巡視項目 (2件)</div>
+    <div id="priority-items-container"></div>
+  </div>
+
+  <div class="btn-bar">
+    <button class="btn btn-primary" onclick="prepareAndPrintPDF()">PDF出力（印刷）</button>
+  </div>
+</div>
+
+<!-- ================= 工事別点検項目設定モーダル ================= -->
+<div class="modal-overlay" id="category-modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span>⚙️ 工事別 点検項目設定</span>
+      <button onclick="closeCategoryManageModal()" style="background:transparent; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:0.85rem; color:#555; margin-bottom:10px;">
+        工事名: <strong id="modal-project-name" style="color:#2b5797;"></strong><br>
+        この工事の日報・点検表に含める項目（大項目）を選択してください。
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span style="font-weight:bold; font-size:0.85rem;">点検大項目の選択</span>
+        <div style="display:flex; gap:4px;">
+          <button onclick="toggleAllProjectCategories(true)" class="cat-btn">全選択</button>
+          <button onclick="toggleAllProjectCategories(false)" class="cat-btn">全解除</button>
+        </div>
+      </div>
+      
+      <div class="category-checkbox-grid" id="modal-category-list"></div>
+
+      <!-- 新規カテゴリ・項目作成 -->
+      <div style="margin-top:16px; padding:10px; background:#eef3f8; border-radius:6px;">
+        <div style="font-weight:bold; font-size:0.85rem; color:#234574; margin-bottom:6px;">＋ 新規点検項目の作成</div>
+        <label style="margin-top:0;">新しいカテゴリ名（大項目）</label>
+        <input type="text" id="new-cat-name" placeholder="例：高所作業、解体工事など">
+        <label>点検細目（改行で複数入力）</label>
+        <textarea id="new-cat-items" rows="3" placeholder="例：&#10;安全帯使用の徹底&#10;親綱の緊張状態&#10;手摺りのグラつき確認"></textarea>
+        <button onclick="createNewCategoryFromModal()" class="btn btn-primary" style="margin-top:8px; padding:6px 12px; font-size:0.85rem; width:100%;">この項目をマスターに追加して適用</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeCategoryManageModal()" style="padding:6px 14px; font-size:0.85rem;">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveProjectCategorySettings()" style="padding:6px 16px; font-size:0.85rem;">保存して反映</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= スマホ接続案内モーダル ================= -->
+<div class="modal-overlay" id="qr-modal">
+  <div class="modal-content" style="max-width: 480px;">
+    <div class="modal-header">
+      <span>📱 スマホで開く（接続案内）</span>
+      <button onclick="closeQrModal()" style="background:transparent; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">✕</button>
+    </div>
+    <div class="modal-body" style="text-align:center;">
+      <div style="font-size:0.88rem; color:#444; margin-bottom:12px; text-align:left;">
+        PCと同じWi-Fiに接続しているスマートフォンから、以下のQRコードをカメラで読み取るか、URLを直接入力してください。
+      </div>
+
+      <!-- QRコード -->
+      <div style="display:inline-block; padding:8px; background:#fff; border:1px solid #ddd; border-radius:8px; margin-bottom:10px;">
+        <img id="qr-code-img" src="" alt="スマホ接続用QRコード" style="width:180px; height:180px; display:block;">
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <div style="font-size:0.75rem; color:#666;">接続URL:</div>
+        <a id="qr-url-link" href="" target="_blank" style="font-size:0.95rem; font-weight:bold; color:#2b5797; word-break:break-all;"></a>
+      </div>
+
+      <div style="background:#f0f4f8; border-radius:6px; padding:10px; text-align:left; font-size:0.8rem; line-height:1.5;">
+        <div style="font-weight:bold; color:#234574; margin-bottom:4px;">📲 ホーム画面に追加してアプリ化する方法:</div>
+        <strong>iPhone (Safari):</strong> 画面下の「共有ボタン（四角から上矢印）」→「ホーム画面に追加」<br>
+        <strong>Android (Chrome):</strong> 右上の「3点メニュー」→「ホーム画面に追加」または「アプリをインストール」
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeQrModal()" style="padding:6px 16px; font-size:0.85rem;">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 印刷用レイアウト (PDF出力用 2〜3ページ) ================= -->
+<div id="pdf-render-area">
+  <!-- 1ページ目 (表面: 日報) -->
+  <div class="print-page">
+    <!-- ヘッダー（タイトル・工事名・日付・天候 ＋ 正方形印鑑欄・電子押印） -->
+    <div class="p1-header-box">
+      <div class="p1-header-left">
+        <h1 class="p1-title-text">安　全　巡　視　日　報</h1>
+        <div class="p1-meta-row">
+          <div>工事名：<span id="p1-project-name" style="font-weight:bold;"></span></div>
+          <div><span id="p1-date-str"></span> （<span id="p1-youbi"></span>曜）　天候：<span id="p1-weather"></span></div>
+        </div>
+      </div>
+      <div class="p1-hanko-wrap">
+        <table class="p1-hanko-table">
+          <tr>
+            <th>現場代理人</th>
+            <th>安全巡視員</th>
+          </tr>
+          <tr>
+            <td id="p1-hanko-agent" class="hanko-cell"></td>
+            <td id="p1-hanko-inspector" class="hanko-cell"></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- タイムチャート (8:00 - 7:00 24h) -->
+    <table class="time-chart-table">
+      <tr>
+        <td style="width:52px; font-weight:bold;">巡視時間</td>
+        <script>
+          const hours = [8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,1,2,3,4,5,6,7];
+          hours.forEach(h => document.write(`<td>${h}</td>`));
+        </script>
+      </tr>
+      <tr id="p1-time-cells-row">
+        <td>結果</td>
+        <script>
+          hours.forEach((_, idx) => document.write(`<td id="p1-time-${idx}"></td>`));
+        </script>
+      </tr>
+    </table>
+
+    <!-- 日報本文テーブル (親テーブル構造で一切のズレ・乱れを防止) -->
+    <table class="p1-main-table">
+      <colgroup>
+        <col style="width: 18%;">
+        <col style="width: 41%;">
+        <col style="width: 41%;">
+      </colgroup>
+      <tr style="height: 20%;">
+        <th>主な作業項目</th>
+        <td colspan="2" id="p1-work-items"></td>
+      </tr>
+      <tr style="height: 20%;">
+        <th>作業の急所と<br>安全上の諸注意</th>
+        <td colspan="2" id="p1-safety-notes"></td>
+      </tr>
+      
+      <!-- 安全点検結果（AM / PM 左右整列レイアウト） -->
+      <tr style="height: 18px;">
+        <th rowspan="2">安全点検結果</th>
+        <th style="height:18px; font-size:8pt; background:#fafafa; text-align:center; padding:1px;">AM</th>
+        <th style="height:18px; font-size:8pt; background:#fafafa; text-align:center; padding:1px;">PM</th>
+      </tr>
+      <tr style="height: 24%;">
+        <td id="p1-results-am"></td>
+        <td id="p1-results-pm"></td>
+      </tr>
+
+      <tr style="height: 18%;">
+        <th>指示・是正事項</th>
+        <td colspan="2" id="p1-corrective-actions"></td>
+      </tr>
+      <tr style="height: 14%;">
+        <th>備　　考</th>
+        <td colspan="2" id="p1-remarks"></td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- 2ページ目 (裏面: 巡回点検表 オリジナル完全準拠 左右バランス自動配分) -->
+  <div class="print-page">
+    <h2 class="p2-header-title">巡　回　点　検　表</h2>
+
+    <!-- 左右2列の点検表 -->
+    <div class="p2-columns-container">
+      <!-- 左列テーブル -->
+      <table class="p2-col-table">
+        <thead>
+          <tr>
+            <th rowspan="2" style="width:16px;"></th>
+            <th rowspan="2" style="width:auto;">項　　　　　　　目</th>
+            <th colspan="3" style="width:47px;">良否</th>
+            <th rowspan="2" style="width:32px;">処　置</th>
+          </tr>
+          <tr>
+            <th style="width:15px; font-size:6pt;">AM</th>
+            <th style="width:15px; font-size:6pt;">PM</th>
+            <th style="width:17px; font-size:5.5pt;">終業時</th>
+          </tr>
+        </thead>
+        <tbody id="p2-left-tbody"></tbody>
+      </table>
+
+      <!-- 右列テーブル -->
+      <table class="p2-col-table">
+        <thead>
+          <tr>
+            <th rowspan="2" style="width:16px;"></th>
+            <th rowspan="2" style="width:auto;">項　　　　　　　目</th>
+            <th colspan="3" style="width:47px;">良否</th>
+            <th rowspan="2" style="width:32px;">処　置</th>
+          </tr>
+          <tr>
+            <th style="width:15px; font-size:6pt;">AM</th>
+            <th style="width:15px; font-size:6pt;">PM</th>
+            <th style="width:17px; font-size:5.5pt;">終業時</th>
+          </tr>
+        </thead>
+        <tbody id="p2-right-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- 重点巡視項目テーブル (2件固定) -->
+    <div class="p2-priority-header">＊ 本日の作業に伴う重点巡視項目</div>
+    <table class="p2-priority-table">
+      <thead>
+        <tr>
+          <th style="width:30%;">巡　視　項　目</th>
+          <th style="width:44%;">巡　視　結　果</th>
+          <th style="width:11%;">良・否</th>
+          <th style="width:15%;">備　考</th>
+        </tr>
+      </thead>
+      <tbody id="p2-priority-tbody"></tbody>
+    </table>
+    <div class="p2-note">(注) 1. 良否欄には良は○、否は×で表わす</div>
+  </div>
+
+  <!-- 3ページ目 (写真添付時のみ追加出力される是正改善写真票) -->
+  <div class="print-page" id="p3-photo-page" style="display:none;">
+    <h2 class="p3-title">安 全 巡 視 日 報（是 正 改 善 写 真）</h2>
+    
+    <div class="p3-meta-bar">
+      <div>工事名：<span id="p3-project-name" style="font-weight:bold;"></span></div>
+      <div>巡視日：<span id="p3-date-str"></span>　天候：<span id="p3-weather"></span>　巡視員：<span id="p3-inspector"></span></div>
+    </div>
+
+    <table class="p3-main-table">
+      <tr>
+        <th class="p3-th-header" colspan="2">【 指 示 ・ 是 正 事 項 】</th>
+      </tr>
+      <tr>
+        <td class="p3-td-content" colspan="2" id="p3-corrective-text"></td>
+      </tr>
+      <tr>
+        <th class="p3-th-photo">【 改 善 前 】（是正前）</th>
+        <th class="p3-th-photo">【 改 善 後 】（是正処置後）</th>
+      </tr>
+      <tr>
+        <td class="p3-td-photo">
+          <img id="p3-img-before" class="p3-photo-img" alt="改善前写真">
+        </td>
+        <td class="p3-td-photo">
+          <img id="p3-img-after" class="p3-photo-img" alt="改善後写真">
+        </td>
+      </tr>
+      <tr>
+        <th class="p3-th-header" colspan="2">【 改 善 処 置 お よ び 確 認 内 容 】</th>
+      </tr>
+      <tr>
+        <td class="p3-td-content" colspan="2" id="p3-detail-text"></td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<script>
+// =========================================================
+// 包括的点検項目マスタープール
+// =========================================================
+const DEFAULT_ALL_MASTER_CATEGORIES = [
+  {
+    category: "一般状況",
+    items: [
+      "整理、整頓、清掃の状況",
+      "注意、警戒、指示、安全等標示",
+      "作 業 行 動",
+      "保 護 具 使 用 の 状 況",
+      "作 業 服 装",
+      "作業員の健康状態"
+    ]
+  },
+  {
+    category: "安全通路・工事用道路",
+    items: [
+      "通 路 の 整 備 状 況",
+      "昇 降 設 備 の 整 備 状 況",
+      "通路上に不要物はないか",
+      "工事用道路の整備状況"
+    ]
+  },
+  {
+    category: "足場・構台",
+    items: [
+      "組立て、構造、材料の安全度",
+      "危険箇所の安全設備と標示",
+      "積 載 荷 重 の 標 示",
+      "安全帯、保護帽の使用状況"
+    ]
+  },
+  {
+    category: "電動工具",
+    items: [
+      "使用前点検の状況",
+      "防護カバー等の状態",
+      "コ ー ド 類 の 状 態",
+      "保護具の着用状況",
+      "作 業 時 の 姿 勢",
+      "安 全 装 置 の 作 動 状 態"
+    ]
+  },
+  {
+    category: "クレーン・移動式クレーン",
+    items: [
+      "巻過防止装置等安全装置",
+      "ブレーキ、クラッチの機能",
+      "コントローラの機能",
+      "敷鉄板･敷板の使用状況",
+      "アウトリガーの張出し",
+      "玉 掛 及 び 合 図",
+      "注意、警戒、指示、安全等標示"
+    ]
+  },
+  {
+    category: "塗膜剥離",
+    items: [
+      "作業場所の養生",
+      "保護具の着用状況",
+      "粉 塵 対 策",
+      "塗膜カスの処理"
+    ]
+  },
+  {
+    category: "化学物質",
+    items: [
+      "SDSデータシートの確認",
+      "保 護 具 の 使 用 状 況",
+      "作業場所の養生",
+      "作 業 場 所 の 換 気"
+    ]
+  },
+  {
+    category: "機　械",
+    items: [
+      "届出、認可、許可、検査",
+      "分 離 措 置",
+      "機械、器具の安全装置",
+      "清掃、注油、検査の励行"
+    ]
+  },
+  {
+    category: "交通・運輸",
+    items: [
+      "場内交通規制の励行",
+      "車 両 の 整 備 状 況",
+      "交 通 標 識 の 整 備",
+      "積荷の状況及び速度",
+      "誘導員の位置及び誘導方法"
+    ]
+  },
+  {
+    category: "火災防止",
+    items: [
+      "接触発火、引火の予防装置",
+      "自然発火の危険防止",
+      "消 火 設 備",
+      "防 火 責 任 者 の 標 示",
+      "火 元 の 始 末"
+    ]
+  },
+  {
+    category: "電気災害防止",
+    items: [
+      "高圧線保護及び配線状況",
+      "感電及び接触危険防止と標示",
+      "スイッチ箇所、操作部分の照度",
+      "スイッチ及びスイッチ箱の整備",
+      "ヒューズ容量の適否",
+      "電線、器具、ﾎﾙダ等の絶縁効力",
+      "自動電撃防止装置及び検電",
+      "通 路 面 の 配 線 状 況",
+      "電 動 機 械 の ア ー ス"
+    ]
+  },
+  {
+    category: "資機材管理他",
+    items: [
+      "重機車両の駐機状態",
+      "重 機 車 両 の 施 錠",
+      "仮 置 き 資 材 の 状 態",
+      "現 場 出 入 口 の 封 鎖",
+      "その他（　　　　　　　　　　）"
+    ]
+  },
+  {
+    category: "盗難防止",
+    items: [
+      "不審者、不審車輌の状況",
+      "持 込 機 械 の 状 況",
+      "仮 置 き 資 材 の 状 況",
+      "その他（　　　　　　　　　　）"
+    ]
+  },
+  {
+    category: "第三者対策",
+    items: [
+      "第三者立入防止措置の状態",
+      "一般道路の汚損の有無",
+      "防 塵 対 策 の 状 況"
+    ]
+  },
+  {
+    category: "くい打・抜機",
+    items: [
+      "機体及び装置の安全状態",
+      "倒壊防止装置の状態",
+      "ウインチ、鋼索、付属器具",
+      "二本鋼、三本鋼の安全度",
+      "玉 掛 け 及 び 合 図",
+      "作 業 足 場 の 状 態",
+      "安 全 装 置 の 作 動 状 態"
+    ]
+  },
+  {
+    category: "アセチレン溶接装置",
+    items: [
+      "発 生 器、安 全 器 の 状 況",
+      "検査証、作業主任者等の確認",
+      "危険防止の措置及び標示",
+      "消火設備及び保護具の使用"
+    ]
+  },
+  {
+    category: "掘削作業",
+    items: [
+      "安全勾配、露天採掘の危険防止",
+      "土止め支保工の状況",
+      "地下水、湧水、ガスの処置",
+      "立入禁止、危険標識、看視人"
+    ]
+  }
+];
+
+// デフォルト履歴リスト
+const DEFAULT_WEATHERS = ["晴", "曇", "雨", "雪", "小雨", "曇時々雨", "晴時々曇", "大雨", "雷雨"];
+const DEFAULT_INSPECTORS = ["山田 太郎", "佐藤 一郎", "鈴木 次郎"];
+
+// アプリデータ構造
+let appData = {
+  projects: ["あいうえお道路改良工事"],
+  currentProject: "あいうえお道路改良工事",
+  masterCategories: JSON.parse(JSON.stringify(DEFAULT_ALL_MASTER_CATEGORIES)),
+  projectConfigs: {},
+  weatherHistory: [...DEFAULT_WEATHERS],
+  inspectorHistory: [...DEFAULT_INSPECTORS],
+  records: {} // "工事名_日付": { weather, inspector, activeHours, workItems, safetyNotes, resultsAM, resultsPM, corrective, remarks, checksData, priorities, photoBefore, photoAfter, photoDetail }
+};
+
+// ローカルストレージ復元
+if (localStorage.getItem("safety_report_data")) {
+  try {
+    const loaded = JSON.parse(localStorage.getItem("safety_report_data"));
+    if (loaded && typeof loaded === 'object') {
+      appData = Object.assign(appData, loaded);
+      if (!appData.weatherHistory || appData.weatherHistory.length === 0) appData.weatherHistory = [...DEFAULT_WEATHERS];
+      if (!appData.inspectorHistory || appData.inspectorHistory.length === 0) appData.inspectorHistory = [...DEFAULT_INSPECTORS];
+      if (!appData.masterCategories || appData.masterCategories.length === 0) {
+        appData.masterCategories = JSON.parse(JSON.stringify(DEFAULT_ALL_MASTER_CATEGORIES));
+      } else {
+        DEFAULT_ALL_MASTER_CATEGORIES.forEach(defCat => {
+          if (!appData.masterCategories.some(c => c.category === defCat.category)) {
+            appData.masterCategories.push(defCat);
+          }
+        });
+      }
+      if (!appData.projectConfigs) appData.projectConfigs = {};
+    }
+  } catch(e) {
+    console.error("データ復元エラー:", e);
+  }
+}
+
+function saveData() {
+  localStorage.setItem("safety_report_data", JSON.stringify(appData));
+}
+
+// 現在の工事で有効なカテゴリ一覧を取得
+function getActiveCategoriesForProject(projectName) {
+  const cfg = appData.projectConfigs[projectName];
+  if (cfg && cfg.activeCategories && cfg.activeCategories.length > 0) {
+    return appData.masterCategories.filter(c => cfg.activeCategories.includes(c.category));
+  }
+  const defaultCats = [
+    "一般状況", "安全通路・工事用道路", "足場・構台", "電動工具", "クレーン・移動式クレーン",
+    "塗膜剥離", "盗難防止", "化学物質", "機　械", "交通・運輸", "火災防止", "電気災害防止",
+    "資機材管理他", "第三者対策"
+  ];
+  return appData.masterCategories.filter(c => defaultCats.includes(c.category));
+}
+
+// 点検入力データ
+let currentChecksData = {};
+
+function initChecksData() {
+  currentChecksData = {};
+  const activeCats = getActiveCategoriesForProject(appData.currentProject);
+  activeCats.forEach(catObj => {
+    currentChecksData[catObj.category] = catObj.items.map(it => ({
+      item: it,
+      am: "○",
+      pm: "○",
+      end: "○",
+      action: ""
+    }));
+  });
+}
+
+// 重点巡視項目入力データ (2件固定)
+let priorityItems = [
+  { item: "", result: "", judge: "○", remark: "" },
+  { item: "", result: "", judge: "○", remark: "" }
+];
+
+// 写真データ（Base64）
+let currentPhotoBefore = "";
+let currentPhotoAfter = "";
+
+// 初期化
+window.onload = function() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById("report-date").value = today;
+  refreshProjectSelect();
+  renderWeatherOptions();
+  renderInspectorOptions();
+  renderTimeSelector();
+  renderPriorityInputs();
+  loadDateRecord();
+};
+
+function refreshProjectSelect() {
+  const sel = document.getElementById("project-select");
+  sel.innerHTML = "";
+  appData.projects.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p; opt.textContent = p;
+    if (p === appData.currentProject) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function createNewProject() {
+  const name = prompt("新しい工事名を入力してください:");
+  if (name && !appData.projects.includes(name)) {
+    appData.projects.push(name);
+    appData.currentProject = name;
+    refreshProjectSelect();
+    loadDateRecord();
+    saveData();
+  }
+}
+
+function switchProject() {
+  appData.currentProject = document.getElementById("project-select").value;
+  loadDateRecord();
+  saveData();
+}
+
+// 天候補完・バッジ
+function renderWeatherOptions() {
+  const dl = document.getElementById("weather-options");
+  dl.innerHTML = "";
+  appData.weatherHistory.forEach(w => {
+    const opt = document.createElement("option");
+    opt.value = w;
+    dl.appendChild(opt);
+  });
+
+  const chipsContainer = document.getElementById("weather-chips-container");
+  chipsContainer.innerHTML = "";
+  appData.weatherHistory.slice(0, 8).forEach(w => {
+    const span = document.createElement("span");
+    span.className = "weather-chip";
+    span.textContent = w;
+    span.onclick = () => {
+      document.getElementById("weather").value = w;
+      handleWeatherChange(w);
+    };
+    chipsContainer.appendChild(span);
+  });
+}
+
+function handleWeatherChange(val) {
+  const trimmed = (val || "").trim();
+  if (trimmed && !appData.weatherHistory.includes(trimmed)) {
+    appData.weatherHistory.unshift(trimmed);
+    if (appData.weatherHistory.length > 20) appData.weatherHistory.pop();
+    renderWeatherOptions();
+  }
+  autoSaveCurrent();
+}
+
+// 巡視員補完
+function renderInspectorOptions() {
+  const dl = document.getElementById("inspector-options");
+  dl.innerHTML = "";
+  appData.inspectorHistory.forEach(name => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    dl.appendChild(opt);
+  });
+}
+
+function handleInspectorChange(val) {
+  const trimmed = (val || "").trim();
+  if (trimmed && !appData.inspectorHistory.includes(trimmed)) {
+    appData.inspectorHistory.unshift(trimmed);
+    if (appData.inspectorHistory.length > 15) appData.inspectorHistory.pop();
+    renderInspectorOptions();
+  }
+  autoSaveCurrent();
+}
+
+// タイムセレクター
+let activeHours = [];
+function renderTimeSelector() {
+  const container = document.getElementById("time-selector-ui");
+  container.innerHTML = "";
+  hours.forEach((h, idx) => {
+    const btn = document.createElement("div");
+    btn.className = "time-cell" + (activeHours.includes(idx) ? " active" : "");
+    btn.textContent = h + ":00";
+    btn.onclick = () => {
+      if (activeHours.includes(idx)) {
+        activeHours = activeHours.filter(x => x !== idx);
+      } else {
+        activeHours.push(idx);
+      }
+      renderTimeSelector();
+      autoSaveCurrent();
+    };
+    container.appendChild(btn);
+  });
+}
+
+// =========================================================
+// 写真アップロード・リサイズ圧縮処理
+// =========================================================
+function handlePhotoUpload(input, type) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      // 最大幅/高さを1000pxに制限して圧縮（容量軽量化＆localStorage対策）
+      const canvas = document.createElement("canvas");
+      let width = img.width;
+      let height = img.height;
+      const MAX_SIZE = 1000;
+      if (width > height) {
+        if (width > MAX_SIZE) {
+          height = Math.round((height * MAX_SIZE) / width);
+          width = MAX_SIZE;
+        }
+      } else {
+        if (height > MAX_SIZE) {
+          width = Math.round((width * MAX_SIZE) / height);
+          height = MAX_SIZE;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.75);
+
+      if (type === 'before') {
+        currentPhotoBefore = compressedDataUrl;
+        updatePhotoUI('before', currentPhotoBefore);
+      } else {
+        currentPhotoAfter = compressedDataUrl;
+        updatePhotoUI('after', currentPhotoAfter);
+      }
+      autoSaveCurrent();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function updatePhotoUI(type, dataUrl) {
+  const preview = document.getElementById(`preview-photo-${type}`);
+  const btnClear = document.getElementById(`btn-clear-${type}`);
+  if (dataUrl) {
+    preview.src = dataUrl;
+    preview.style.display = "block";
+    btnClear.style.display = "inline-block";
+  } else {
+    preview.src = "";
+    preview.style.display = "none";
+    btnClear.style.display = "none";
+  }
+}
+
+function clearPhoto(type) {
+  if (type === 'before') {
+    currentPhotoBefore = "";
+    document.getElementById("file-photo-before").value = "";
+    updatePhotoUI('before', "");
+  } else {
+    currentPhotoAfter = "";
+    document.getElementById("file-photo-after").value = "";
+    updatePhotoUI('after', "");
+  }
+  autoSaveCurrent();
+}
+
+// =========================================================
+// 点検表入力UI
+// =========================================================
+function renderCheckCategoriesUI() {
+  const container = document.getElementById("check-categories-container");
+  container.innerHTML = "";
+
+  const activeCats = getActiveCategoriesForProject(appData.currentProject);
+
+  activeCats.forEach(catObj => {
+    const catName = catObj.category;
+    if (!currentChecksData[catName]) {
+      currentChecksData[catName] = catObj.items.map(it => ({
+        item: it, am: "○", pm: "○", end: "○", action: ""
+      }));
+    }
+    const items = currentChecksData[catName];
+
+    const groupDiv = document.createElement("div");
+    groupDiv.className = "cat-group";
+
+    const headerDiv = document.createElement("div");
+    headerDiv.className = "cat-header";
+    headerDiv.innerHTML = `
+      <div class="cat-title">
+        <span>${catName}</span>
+        <span style="font-size:0.75rem; color:#6c757d; font-weight:normal;">(${items.length}件)</span>
+      </div>
+      <div class="cat-actions" onclick="event.stopPropagation();">
+        <button class="cat-btn" onclick="bulkSetCat('${catName}', 'all', '○')" title="このカテゴリの全時間を○にする">全○</button>
+        <button class="cat-btn" onclick="bulkSetCat('${catName}', 'am', '○')" title="AMを○にする">AM○</button>
+        <button class="cat-btn" onclick="bulkSetCat('${catName}', 'pm', '○')" title="PMを○にする">PM○</button>
+        <button class="cat-btn" onclick="bulkSetCat('${catName}', 'end', '○')" title="終業時を○にする">終○</button>
+        <button class="cat-btn" onclick="bulkSetCat('${catName}', 'all', '-')" style="color:#6c757d;" title="対象外(-)にする">全-</button>
+      </div>
+    `;
+
+    const bodyDiv = document.createElement("div");
+    bodyDiv.className = "cat-body";
+
+    items.forEach((itemObj, itemIdx) => {
+      const row = document.createElement("div");
+      row.className = "cat-item-row";
+      row.innerHTML = `
+        <div class="cat-item-name">${itemObj.item}</div>
+        <div class="cat-item-inputs">
+          <label style="margin:0; font-size:0.75rem; font-weight:normal;">AM:</label>
+          <select onchange="updateItemCheck('${catName}', ${itemIdx}, 'am', this.value)" style="width:48px; padding:2px; font-size:0.85rem;">
+            <option value="○" ${itemObj.am==='○'?'selected':''}>○</option>
+            <option value="×" ${itemObj.am==='×'?'selected':''}>×</option>
+            <option value="-" ${itemObj.am==='-'||!itemObj.am?'selected':''}>-</option>
+          </select>
+          <label style="margin:0; font-size:0.75rem; font-weight:normal;">PM:</label>
+          <select onchange="updateItemCheck('${catName}', ${itemIdx}, 'pm', this.value)" style="width:48px; padding:2px; font-size:0.85rem;">
+            <option value="○" ${itemObj.pm==='○'?'selected':''}>○</option>
+            <option value="×" ${itemObj.pm==='×'?'selected':''}>×</option>
+            <option value="-" ${itemObj.pm==='-'||!itemObj.pm?'selected':''}>-</option>
+          </select>
+          <label style="margin:0; font-size:0.75rem; font-weight:normal;">終:</label>
+          <select onchange="updateItemCheck('${catName}', ${itemIdx}, 'end', this.value)" style="width:48px; padding:2px; font-size:0.85rem;">
+            <option value="○" ${itemObj.end==='○'?'selected':''}>○</option>
+            <option value="×" ${itemObj.end==='×'?'selected':''}>×</option>
+            <option value="-" ${itemObj.end==='-'||!itemObj.end?'selected':''}>-</option>
+          </select>
+          <input type="text" placeholder="処置" value="${itemObj.action||''}" oninput="updateItemCheck('${catName}', ${itemIdx}, 'action', this.value)" style="flex:1; padding:2px 6px; font-size:0.8rem; height:26px;">
+        </div>
+      `;
+      bodyDiv.appendChild(row);
+    });
+
+    groupDiv.appendChild(headerDiv);
+    groupDiv.appendChild(bodyDiv);
+    container.appendChild(groupDiv);
+  });
+}
+
+function updateItemCheck(catName, idx, field, val) {
+  if (currentChecksData[catName] && currentChecksData[catName][idx]) {
+    currentChecksData[catName][idx][field] = val;
+    autoSaveCurrent();
+  }
+}
+
+function bulkSetCat(catName, slot, val) {
+  if (!currentChecksData[catName]) return;
+  currentChecksData[catName].forEach(it => {
+    if (slot === 'all') {
+      it.am = val; it.pm = val; it.end = val;
+    } else {
+      it[slot] = val;
+    }
+  });
+  renderCheckCategoriesUI();
+  autoSaveCurrent();
+}
+
+function bulkSetAllChecks(val) {
+  Object.keys(currentChecksData).forEach(catName => {
+    currentChecksData[catName].forEach(it => {
+      it.am = val; it.pm = val; it.end = val;
+    });
+  });
+  renderCheckCategoriesUI();
+  autoSaveCurrent();
+}
+
+// =========================================================
+// 工事別項目管理モーダル
+// =========================================================
+function openCategoryManageModal() {
+  document.getElementById("modal-project-name").textContent = appData.currentProject;
+  const listContainer = document.getElementById("modal-category-list");
+  listContainer.innerHTML = "";
+
+  const activeCats = getActiveCategoriesForProject(appData.currentProject).map(c => c.category);
+
+  appData.masterCategories.forEach((catObj) => {
+    const label = document.createElement("label");
+    label.className = "category-check-item";
+    const isChecked = activeCats.includes(catObj.category);
+    label.innerHTML = `
+      <input type="checkbox" value="${catObj.category}" ${isChecked ? 'checked' : ''} class="modal-cat-cb">
+      <span>${catObj.category} (${catObj.items.length})</span>
+    `;
+    listContainer.appendChild(label);
+  });
+
+  document.getElementById("category-modal").classList.add("active");
+}
+
+function closeCategoryManageModal() {
+  document.getElementById("category-modal").classList.remove("active");
+}
+
+function toggleAllProjectCategories(check) {
+  document.querySelectorAll(".modal-cat-cb").forEach(cb => cb.checked = check);
+}
+
+function saveProjectCategorySettings() {
+  const selectedCats = [];
+  document.querySelectorAll(".modal-cat-cb:checked").forEach(cb => {
+    selectedCats.push(cb.value);
+  });
+
+  if (selectedCats.length === 0) {
+    alert("少なくとも1つの項目を選択してください。");
+    return;
+  }
+
+  if (!appData.projectConfigs[appData.currentProject]) {
+    appData.projectConfigs[appData.currentProject] = {};
+  }
+  appData.projectConfigs[appData.currentProject].activeCategories = selectedCats;
+  saveData();
+
+  initChecksData();
+  renderCheckCategoriesUI();
+  closeCategoryManageModal();
+  alert("工事の点検項目設定を更新しました。");
+}
+
+function createNewCategoryFromModal() {
+  const catName = document.getElementById("new-cat-name").value.trim();
+  const rawItems = document.getElementById("new-cat-items").value.trim();
+
+  if (!catName || !rawItems) {
+    alert("カテゴリ名と点検細目を入力してください。");
+    return;
+  }
+
+  const items = rawItems.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+  if (items.length === 0) return;
+
+  let existing = appData.masterCategories.find(c => c.category === catName);
+  if (existing) {
+    items.forEach(it => {
+      if (!existing.items.includes(it)) existing.items.push(it);
+    });
+  } else {
+    appData.masterCategories.push({ category: catName, items: items });
+  }
+
+  if (!appData.projectConfigs[appData.currentProject]) {
+    appData.projectConfigs[appData.currentProject] = { activeCategories: getActiveCategoriesForProject(appData.currentProject).map(c => c.category) };
+  }
+  if (!appData.projectConfigs[appData.currentProject].activeCategories.includes(catName)) {
+    appData.projectConfigs[appData.currentProject].activeCategories.push(catName);
+  }
+
+  saveData();
+  document.getElementById("new-cat-name").value = "";
+  document.getElementById("new-cat-items").value = "";
+  openCategoryManageModal();
+  initChecksData();
+  renderCheckCategoriesUI();
+  alert(`「${catName}」を追加しました。`);
+}
+
+// =========================================================
+// 重点巡視項目入力UI (2件固定)
+// =========================================================
+function renderPriorityInputs() {
+  const container = document.getElementById("priority-items-container");
+  container.innerHTML = "";
+  while (priorityItems.length < 2) priorityItems.push({ item: "", result: "", judge: "○", remark: "" });
+  if (priorityItems.length > 2) priorityItems = priorityItems.slice(0, 2);
+
+  priorityItems.forEach((p, idx) => {
+    const div = document.createElement("div");
+    div.style = "margin-bottom:8px; border-bottom:1px dashed #ccc; padding-bottom:6px;";
+    div.innerHTML = `
+      <div style="font-size:0.8rem; font-weight:bold; color:#444;">重点巡視項目 ${idx+1}</div>
+      <input type="text" placeholder="巡視項目" value="${p.item||''}" oninput="priorityItems[${idx}].item=this.value; autoSaveCurrent();" style="margin-bottom:4px;">
+      <div style="display:flex; gap:6px;">
+        <input type="text" placeholder="巡視結果" value="${p.result||''}" oninput="priorityItems[${idx}].result=this.value; autoSaveCurrent();" style="flex:2;">
+        <select onchange="priorityItems[${idx}].judge=this.value; autoSaveCurrent();" style="width:55px;">
+          <option value="○" ${p.judge==='○'?'selected':''}>○</option>
+          <option value="×" ${p.judge==='×'?'selected':''}>×</option>
+          <option value="-" ${p.judge==='-'?'selected':''}>-</option>
+        </select>
+        <input type="text" placeholder="備考" value="${p.remark||''}" oninput="priorityItems[${idx}].remark=this.value; autoSaveCurrent();" style="flex:1;">
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+// 保存キー取得
+function getKey() {
+  return `${appData.currentProject}_${document.getElementById("report-date").value}`;
+}
+
+// 自動保存
+function autoSaveCurrent() {
+  const key = getKey();
+  const weatherVal = document.getElementById("weather").value;
+  const inspectorVal = document.getElementById("inspector-name").value;
+
+  appData.records[key] = {
+    weather: weatherVal,
+    inspector: inspectorVal,
+    activeHours: activeHours,
+    workItems: document.getElementById("work-items").value,
+    safetyNotes: document.getElementById("safety-notes").value,
+    resultsAM: document.getElementById("safety-results-am").value,
+    resultsPM: document.getElementById("safety-results-pm").value,
+    corrective: document.getElementById("corrective-actions").value,
+    remarks: document.getElementById("remarks").value,
+    checksData: currentChecksData,
+    priorities: priorityItems,
+    photoBefore: currentPhotoBefore,
+    photoAfter: currentPhotoAfter,
+    photoDetail: document.getElementById("photo-detail-note").value
+  };
+  saveData();
+}
+
+// 入力イベント監視
+['work-items', 'safety-notes', 'safety-results-am', 'safety-results-pm', 'corrective-actions', 'remarks', 'weather', 'inspector-name'].forEach(id => {
+  document.getElementById(id).addEventListener('input', autoSaveCurrent);
+});
+
+// レコード読込
+function loadDateRecord() {
+  const key = getKey();
+  const rec = appData.records[key];
+  if (rec) {
+    document.getElementById("weather").value = rec.weather || "晴";
+    document.getElementById("inspector-name").value = rec.inspector || (appData.inspectorHistory[0] || "山田 太郎");
+    activeHours = rec.activeHours || [];
+    document.getElementById("work-items").value = rec.workItems || "";
+    document.getElementById("safety-notes").value = rec.safetyNotes || "";
+    document.getElementById("safety-results-am").value = rec.resultsAM || "";
+    document.getElementById("safety-results-pm").value = rec.resultsPM || "";
+    document.getElementById("corrective-actions").value = rec.corrective || "";
+    document.getElementById("remarks").value = rec.remarks || "";
+
+    if (rec.checksData) {
+      currentChecksData = JSON.parse(JSON.stringify(rec.checksData));
+    } else {
+      initChecksData();
+    }
+
+    priorityItems = (rec.priorities && rec.priorities.length >= 2) ? rec.priorities.slice(0, 2) : [
+      { item: "", result: "", judge: "○", remark: "" },
+      { item: "", result: "", judge: "○", remark: "" }
+    ];
+
+    currentPhotoBefore = rec.photoBefore || "";
+    currentPhotoAfter = rec.photoAfter || "";
+    updatePhotoUI('before', currentPhotoBefore);
+    updatePhotoUI('after', currentPhotoAfter);
+    document.getElementById("photo-detail-note").value = rec.photoDetail || "";
+  } else {
+    // 新規日付
+    activeHours = [];
+    document.getElementById("weather").value = "晴";
+    document.getElementById("inspector-name").value = appData.inspectorHistory[0] || "山田 太郎";
+    document.getElementById("work-items").value = "";
+    document.getElementById("safety-notes").value = "";
+    document.getElementById("safety-results-am").value = "";
+    document.getElementById("safety-results-pm").value = "";
+    document.getElementById("corrective-actions").value = "";
+    document.getElementById("remarks").value = "";
+    initChecksData();
+    priorityItems = [
+      { item: "", result: "", judge: "○", remark: "" },
+      { item: "", result: "", judge: "○", remark: "" }
+    ];
+    currentPhotoBefore = "";
+    currentPhotoAfter = "";
+    updatePhotoUI('before', "");
+    updatePhotoUI('after', "");
+    document.getElementById("photo-detail-note").value = "";
+  }
+  renderTimeSelector();
+  renderCheckCategoriesUI();
+  renderPriorityInputs();
+}
+
+// 前日コピー
+function copyYesterdayData() {
+  const keys = Object.keys(appData.records).filter(k => k.startsWith(appData.currentProject + "_")).sort();
+  const currentKey = getKey();
+  const pastKeys = keys.filter(k => k < currentKey);
+  if (pastKeys.length === 0) {
+    alert("コピー可能な過去の巡視記録が見つかりません。");
+    return;
+  }
+  const lastKey = pastKeys[pastKeys.length - 1];
+  const lastRec = appData.records[lastKey];
+  
+  if (confirm(`前回の記録（${lastKey.split('_')[1]}）の内容を反映しますか？`)) {
+    document.getElementById("work-items").value = lastRec.workItems || "";
+    document.getElementById("safety-notes").value = lastRec.safetyNotes || "";
+    if (lastRec.inspector) document.getElementById("inspector-name").value = lastRec.inspector;
+    if (lastRec.checksData) {
+      currentChecksData = JSON.parse(JSON.stringify(lastRec.checksData));
+    }
+    priorityItems = (lastRec.priorities && lastRec.priorities.length >= 2) ? JSON.parse(JSON.stringify(lastRec.priorities.slice(0, 2))) : priorityItems;
+    renderCheckCategoriesUI();
+    renderPriorityInputs();
+    autoSaveCurrent();
+    alert("反映が完了しました。");
+  }
+}
+
+// 音声入力
+let recognition = null;
+function startVoice(targetId, btn) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert("お使いのブラウザは音声入力に対応していません。(ChromeまたはSafariをご利用ください)");
+    return;
+  }
+  if (recognition) {
+    recognition.stop();
+    recognition = null;
+    btn.classList.remove("recording");
+    return;
+  }
+
+  recognition = new SpeechRecognition();
+  recognition.lang = "ja-JP";
+  recognition.interimResults = false;
+  btn.classList.add("recording");
+
+  recognition.onresult = function(event) {
+    const text = event.results[0][0].transcript;
+    const target = document.getElementById(targetId);
+    target.value = target.value ? target.value + " " + text : text;
+    autoSaveCurrent();
+  };
+
+  recognition.onend = function() {
+    btn.classList.remove("recording");
+    recognition = null;
+  };
+
+  recognition.onerror = function() {
+    btn.classList.remove("recording");
+    recognition = null;
+  };
+
+  recognition.start();
+}
+
+// JSONデータインポート（社内共有用）
+function importDataJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (confirm("取り込んだデータ（工事設定・点検マスタ・記録）で現在のデータを更新しますか？")) {
+        appData = Object.assign(appData, imported);
+        saveData();
+        refreshProjectSelect();
+        renderWeatherOptions();
+        renderInspectorOptions();
+        initChecksData();
+        loadDateRecord();
+        alert("データの読み込みが完了しました。");
+      }
+    } catch(err) {
+      alert("データの読み込みに失敗しました。正しいJSONファイルを選択してください。");
+    }
+    input.value = "";
+  };
+  reader.readAsText(file);
+}
+
+// JSONエクスポート
+function exportDataJSON() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", `安全巡視データバックアップ_${new Date().toISOString().split('T')[0]}.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+}
+
+// =========================================================
+// 電子印鑑（朱肉風スタンプ）SVG生成
+// =========================================================
+function generateHankoStampSVG(fullName) {
+  if (!fullName) return "";
+  const trimmed = fullName.trim().replace(/\s+/g, " ");
+  const parts = trimmed.split(" ");
+  let lastName = parts[0];
+  if (lastName.length > 3) lastName = lastName.slice(0, 2);
+
+  const minchoStyle = "font-family:'游明朝','Yu Mincho','YuMincho','MS Mincho','ＭＳ 明朝','Hiragino Mincho ProN',serif !important; font-weight:bold;";
+  let textSvg = "";
+  if (lastName.length === 1) {
+    textSvg = `<text x="50" y="55" style="${minchoStyle}" font-size="44" fill="#b32424" text-anchor="middle" dominant-baseline="middle">${lastName}</text>`;
+  } else if (lastName.length === 2) {
+    textSvg = `
+      <text x="50" y="37" style="${minchoStyle}" font-size="30" fill="#b32424" text-anchor="middle" dominant-baseline="middle">${lastName[0]}</text>
+      <text x="50" y="69" style="${minchoStyle}" font-size="30" fill="#b32424" text-anchor="middle" dominant-baseline="middle">${lastName[1]}</text>
+    `;
+  } else if (lastName.length === 3) {
+    textSvg = `
+      <text x="50" y="28" style="${minchoStyle}" font-size="22" fill="#b32424" text-anchor="middle" dominant-baseline="middle">${lastName[0]}</text>
+      <text x="50" y="50" style="${minchoStyle}" font-size="22" fill="#b32424" text-anchor="middle" dominant-baseline="middle">${lastName[1]}</text>
+      <text x="50" y="72" style="${minchoStyle}" font-size="22" fill="#b32424" text-anchor="middle" dominant-baseline="middle">${lastName[2]}</text>
+    `;
+  } else {
+    textSvg = `<text x="50" y="55" style="${minchoStyle}" font-size="26" fill="#b32424" text-anchor="middle" dominant-baseline="middle">${lastName}</text>`;
+  }
+
+  return `
+    <svg width="48" height="48" viewBox="0 0 100 100" class="hanko-stamp">
+      <circle cx="50" cy="50" r="46" stroke="#b32424" stroke-width="4.5" fill="none" />
+      <circle cx="50" cy="50" r="42" stroke="#b32424" stroke-width="1.2" fill="none" />
+      ${textSvg}
+    </svg>
+  `;
+}
+
+// =========================================================
+// PDF印刷準備・出力（A4縦 2〜3ページ）
+// =========================================================
+function prepareAndPrintPDF() {
+  autoSaveCurrent();
+
+  const proj = appData.currentProject;
+  const dateVal = document.getElementById("report-date").value;
+  const dateObj = new Date(dateVal);
+  const yyyymmdd = dateVal.replace(/-/g, "");
+  const days = ["日", "月", "火", "水", "木", "金", "土"];
+  const youbi = days[dateObj.getDay()];
+  const inspectorName = document.getElementById("inspector-name").value;
+
+  // ブラウザ保存用のタイトル設定（ファイル名）
+  const fileName = `安全巡視_${proj}_${yyyymmdd}`;
+  document.title = fileName;
+
+  // 1ページ目レンダリング
+  document.getElementById("p1-project-name").textContent = proj;
+  document.getElementById("p1-date-str").textContent = `${dateObj.getFullYear()}年${dateObj.getMonth()+1}月${dateObj.getDate()}日`;
+  document.getElementById("p1-youbi").textContent = youbi;
+  document.getElementById("p1-weather").textContent = document.getElementById("weather").value;
+
+  // 安全巡視員の電子押印
+  const inspectorHankoTd = document.getElementById("p1-hanko-inspector");
+  const agentHankoTd = document.getElementById("p1-hanko-agent");
+  if (agentHankoTd) agentHankoTd.innerHTML = "&nbsp;";
+  if (inspectorName.trim()) {
+    inspectorHankoTd.innerHTML = generateHankoStampSVG(inspectorName);
+  } else {
+    inspectorHankoTd.innerHTML = "&nbsp;";
+  }
+
+  hours.forEach((_, idx) => {
+    const td = document.getElementById(`p1-time-${idx}`);
+    if (activeHours.includes(idx)) {
+      td.className = "time-active";
+      td.textContent = "■";
+    } else {
+      td.className = "";
+      td.textContent = "";
+    }
+  });
+
+  const correctiveText = document.getElementById("corrective-actions").value;
+  document.getElementById("p1-work-items").textContent = document.getElementById("work-items").value;
+  document.getElementById("p1-safety-notes").textContent = document.getElementById("safety-notes").value;
+  document.getElementById("p1-results-am").textContent = document.getElementById("safety-results-am").value;
+  document.getElementById("p1-results-pm").textContent = document.getElementById("safety-results-pm").value;
+  document.getElementById("p1-corrective-actions").textContent = correctiveText;
+  document.getElementById("p1-remarks").textContent = document.getElementById("remarks").value;
+
+  // 2ページ目レンダリング（左右バランス配分）
+  renderPrintColumnsBalanced();
+
+  // 重点巡視項目（2行固定）
+  const pBody = document.getElementById("p2-priority-tbody");
+  pBody.innerHTML = "";
+  for(let i=0; i<2; i++) {
+    const p = priorityItems[i] || { item: "", result: "", judge: "", remark: "" };
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${p.item || ""}</td>
+      <td>${p.result || ""}</td>
+      <td class="text-center">${p.judge || ""}</td>
+      <td>${p.remark || ""}</td>
+    `;
+    pBody.appendChild(tr);
+  }
+
+  // 3ページ目（是正写真ページ：写真添付がある場合のみ出力）
+  const p3 = document.getElementById("p3-photo-page");
+  const hasPhotos = (currentPhotoBefore || currentPhotoAfter);
+
+  if (hasPhotos) {
+    p3.style.display = "block";
+    document.getElementById("p3-project-name").textContent = proj;
+    document.getElementById("p3-date-str").textContent = `${dateObj.getFullYear()}年${dateObj.getMonth()+1}月${dateObj.getDate()}日 (${youbi})`;
+    document.getElementById("p3-weather").textContent = document.getElementById("weather").value;
+    document.getElementById("p3-inspector").textContent = inspectorName || "未設定";
+    document.getElementById("p3-corrective-text").textContent = correctiveText || "（指示・是正事項の記載なし）";
+
+    const imgBefore = document.getElementById("p3-img-before");
+    if (currentPhotoBefore) {
+      imgBefore.src = currentPhotoBefore;
+      imgBefore.style.display = "block";
+    } else {
+      imgBefore.src = "";
+      imgBefore.style.display = "none";
+    }
+
+    const imgAfter = document.getElementById("p3-img-after");
+    if (currentPhotoAfter) {
+      imgAfter.src = currentPhotoAfter;
+      imgAfter.style.display = "block";
+    } else {
+      imgAfter.src = "";
+      imgAfter.style.display = "none";
+    }
+
+    const photoDetail = document.getElementById("photo-detail-note").value;
+    document.getElementById("p3-detail-text").textContent = photoDetail || "（改善処置の内容に問題ないことを確認）";
+  } else {
+    p3.style.display = "none";
+  }
+
+  // 印刷プレビュー呼び出し
+  setTimeout(() => {
+    window.print();
+  }, 200);
+}
+
+// 左右バランス配分描画
+function renderPrintColumnsBalanced() {
+  const activeCats = getActiveCategoriesForProject(appData.currentProject);
+  let totalItems = 0;
+  activeCats.forEach(cat => totalItems += cat.items.length);
+
+  const halfTarget = Math.ceil(totalItems / 2);
+  const leftCats = [];
+  const rightCats = [];
+  let currentLeftCount = 0;
+
+  activeCats.forEach(cat => {
+    if (currentLeftCount < halfTarget || leftCats.length === 0) {
+      leftCats.push(cat);
+      currentLeftCount += cat.items.length;
+    } else {
+      rightCats.push(cat);
+    }
+  });
+
+  renderPrintTableColumn("p2-left-tbody", leftCats);
+  renderPrintTableColumn("p2-right-tbody", rightCats);
+}
+
+// 印刷用点検表（カテゴリ縦書き rowspan 結合生成）
+function renderPrintTableColumn(tbodyId, categoriesDef) {
+  const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = "";
+
+  categoriesDef.forEach(catObj => {
+    const catName = catObj.category;
+    const items = catObj.items;
+    const catChecks = currentChecksData[catName] || [];
+
+    items.forEach((itemText, idx) => {
+      const checkItem = catChecks.find(c => c.item === itemText) || { am: "", pm: "", end: "", action: "" };
+      const tr = document.createElement("tr");
+
+      if (idx === 0) {
+        const catTd = document.createElement("td");
+        catTd.rowspan = items.length;
+        catTd.setAttribute("rowspan", items.length);
+        catTd.className = "p2-cat-vertical";
+        catTd.textContent = catName;
+        tr.appendChild(catTd);
+      }
+
+      const itemTd = document.createElement("td");
+      itemTd.className = "p2-item-name";
+      itemTd.textContent = itemText;
+      tr.appendChild(itemTd);
+
+      const amTd = document.createElement("td");
+      amTd.className = "text-center";
+      amTd.textContent = checkItem.am || "";
+      tr.appendChild(amTd);
+
+      const pmTd = document.createElement("td");
+      pmTd.className = "text-center";
+      pmTd.textContent = checkItem.pm || "";
+      tr.appendChild(pmTd);
+
+      const endTd = document.createElement("td");
+      endTd.className = "text-center";
+      endTd.textContent = checkItem.end || "";
+      tr.appendChild(endTd);
+
+      const actTd = document.createElement("td");
+      actTd.textContent = checkItem.action || "";
+      tr.appendChild(actTd);
+
+      tbody.appendChild(tr);
+    });
+  });
+}
+
+// =========================================================
+// スマホ連携モーダル制御
+// =========================================================
+function openQrModal() {
+  let targetUrl = window.location.href;
+  if (targetUrl.includes("127.0.0.1") || targetUrl.includes("localhost")) {
+    targetUrl = targetUrl.replace("127.0.0.1", "192.168.1.32").replace("localhost", "192.168.1.32");
+  }
+  
+  const linkEl = document.getElementById("qr-url-link");
+  linkEl.href = targetUrl;
+  linkEl.textContent = targetUrl;
+
+  const qrImg = document.getElementById("qr-code-img");
+  qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(targetUrl)}`;
+
+  document.getElementById("qr-modal").classList.add("active");
+}
+
+function closeQrModal() {
+  document.getElementById("qr-modal").classList.remove("active");
+}
+</script>
+</body>
+</html>
