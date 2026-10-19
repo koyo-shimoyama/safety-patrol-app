@@ -455,7 +455,6 @@
   <div class="header-bar">
     <h1>安全巡視日報入力</h1>
     <div style="display:flex; gap:5px; align-items:center;">
-      <button class="btn btn-secondary" onclick="openQrModal()" style="padding: 4px 7px; font-size:0.75rem; background:#17a2b8; border-color:#17a2b8;">📱 スマホ</button>
       <label class="btn btn-secondary" style="padding: 4px 7px; font-size:0.75rem; margin:0; cursor:pointer;" title="他の端末やPCのバックアップデータを読み込み">読込<input type="file" accept=".json" onchange="importDataJSON(this)" style="display:none;"></label>
       <button class="btn btn-secondary" onclick="exportDataJSON()" style="padding: 4px 7px; font-size:0.75rem;" title="入力データのバックアップ保存">保存</button>
       <button class="btn btn-primary" onclick="prepareAndPrintPDF()" style="padding: 4px 9px; font-size:0.8rem;">PDF印刷</button>
@@ -657,39 +656,6 @@
   </div>
 </div>
 
-<!-- ================= スマホ接続案内モーダル ================= -->
-<div class="modal-overlay" id="qr-modal">
-  <div class="modal-content" style="max-width: 480px;">
-    <div class="modal-header">
-      <span>📱 スマホで開く（接続案内）</span>
-      <button onclick="closeQrModal()" style="background:transparent; border:none; color:#fff; font-size:1.2rem; cursor:pointer;">✕</button>
-    </div>
-    <div class="modal-body" style="text-align:center;">
-      <div style="font-size:0.88rem; color:#444; margin-bottom:12px; text-align:left;">
-        PCと同じWi-Fiに接続しているスマートフォンから、以下のQRコードをカメラで読み取るか、URLを直接入力してください。
-      </div>
-
-      <!-- QRコード -->
-      <div style="display:inline-block; padding:8px; background:#fff; border:1px solid #ddd; border-radius:8px; margin-bottom:10px;">
-        <img id="qr-code-img" src="" alt="スマホ接続用QRコード" style="width:180px; height:180px; display:block;">
-      </div>
-
-      <div style="margin-bottom:14px;">
-        <div style="font-size:0.75rem; color:#666;">接続URL:</div>
-        <a id="qr-url-link" href="" target="_blank" style="font-size:0.95rem; font-weight:bold; color:#2b5797; word-break:break-all;"></a>
-      </div>
-
-      <div style="background:#f0f4f8; border-radius:6px; padding:10px; text-align:left; font-size:0.8rem; line-height:1.5;">
-        <div style="font-weight:bold; color:#234574; margin-bottom:4px;">📲 ホーム画面に追加してアプリ化する方法:</div>
-        <strong>iPhone (Safari):</strong> 画面下の「共有ボタン（四角から上矢印）」→「ホーム画面に追加」<br>
-        <strong>Android (Chrome):</strong> 右上の「3点メニュー」→「ホーム画面に追加」または「アプリをインストール」
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeQrModal()" style="padding:6px 16px; font-size:0.85rem;">閉じる</button>
-    </div>
-  </div>
-</div>
 
 <!-- ================= 印刷用レイアウト (PDF出力用 2〜3ページ) ================= -->
 <div id="pdf-render-area">
@@ -2007,28 +1973,6 @@ function renderPrintTableColumn(tbodyId, categoriesDef) {
   });
 }
 
-// =========================================================
-// スマホ連携モーダル制御
-// =========================================================
-function openQrModal() {
-  let targetUrl = window.location.href;
-  if (targetUrl.includes("127.0.0.1") || targetUrl.includes("localhost")) {
-    targetUrl = targetUrl.replace("127.0.0.1", "192.168.1.32").replace("localhost", "192.168.1.32");
-  }
-  
-  const linkEl = document.getElementById("qr-url-link");
-  linkEl.href = targetUrl;
-  linkEl.textContent = targetUrl;
-
-  const qrImg = document.getElementById("qr-code-img");
-  qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(targetUrl)}`;
-
-  document.getElementById("qr-modal").classList.add("active");
-}
-
-function closeQrModal() {
-  document.getElementById("qr-modal").classList.remove("active");
-}
 </script>
 </body>
 </html>
