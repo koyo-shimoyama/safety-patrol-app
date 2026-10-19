@@ -468,7 +468,8 @@
     <label>対象工事名</label>
     <div style="display:flex; gap:5px;">
       <select id="project-select" onchange="switchProject()" style="flex:1;"></select>
-      <button onclick="createNewProject()" style="padding: 0 10px; border-radius:4px; border:1px solid #ccc; background:#f8f9fa; cursor:pointer;">＋新規</button>
+      <button onclick="createNewProject()" style="padding: 0 9px; border-radius:4px; border:1px solid #ccc; background:#f8f9fa; cursor:pointer;" title="新しい工事を追加">＋新規</button>
+      <button onclick="deleteCurrentProject()" style="padding: 0 9px; border-radius:4px; border:1px solid #dc3545; background:#fff; color:#dc3545; cursor:pointer;" title="現在選択中の工事を削除">🗑️削除</button>
     </div>
     
     <div style="display:flex; gap:10px; margin-top:8px;">
@@ -1162,6 +1163,40 @@ function createNewProject() {
     loadDateRecord();
     saveData();
   }
+}
+
+function deleteCurrentProject() {
+  const current = appData.currentProject;
+  if (appData.projects.length <= 1) {
+    alert("登録されている工事が1件のみのため、削除できません。\n（別の工事を追加してから削除してください）");
+    return;
+  }
+
+  const msg = `工事「${current}」を削除してもよろしいですか？\n\n※この工事に関連する巡視日報や写真データも削除されます。`;
+  if (!confirm(msg)) return;
+
+  // 工事リストから削除
+  appData.projects = appData.projects.filter(p => p !== current);
+
+  // 工事設定の削除
+  if (appData.projectConfigs && appData.projectConfigs[current]) {
+    delete appData.projectConfigs[current];
+  }
+
+  // 関連日報レコードの削除
+  const prefix = current + "_";
+  Object.keys(appData.records).forEach(key => {
+    if (key.startsWith(prefix)) {
+      delete appData.records[key];
+    }
+  });
+
+  // 次の工事に自動切り替え
+  appData.currentProject = appData.projects[0];
+  saveData();
+  refreshProjectSelect();
+  loadDateRecord();
+  alert(`工事「${current}」を削除しました。`);
 }
 
 function switchProject() {
